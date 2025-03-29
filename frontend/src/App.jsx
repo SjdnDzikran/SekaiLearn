@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AuthClient } from '@dfinity/auth-client';
 import { canisterId, createActor } from 'declarations/backend'; // Ensure dfx generate ran
+import logoImage from '../logo.webp'; // Make sure this path is correct
 
 // --- Network & Identity Provider Configuration ---
 const network = process.env.DFX_NETWORK || 'local';
@@ -8,59 +9,347 @@ const getIdentityProviderUrl = () => {
   if (network === 'ic') {
     return 'https://identity.ic0.app';
   } else if (network === 'playground') {
-    const playgroundIIcanisterId = 'rdmx6-jaaaa-aaaaa-aaadq-cai';
+    const playgroundIIcanisterId = 'rdmx6-jaaaa-aaaaa-aaadq-cai'; // Example, replace if needed
     return `http://${playgroundIIcanisterId}.localhost:4943`;
   } else {
-    const localIIcanisterId = process.env.CANISTER_ID_INTERNET_IDENTITY || 'rdmx6-jaaaa-aaaaa-aaadq-cai';
+    const localIIcanisterId = process.env.CANISTER_ID_INTERNET_IDENTITY || 'rdmx6-jaaaa-aaaaa-aaadq-cai'; // Example, replace if needed
     return `http://${localIIcanisterId}.localhost:4943`;
   }
 };
 const internetIdentityUrl = getIdentityProviderUrl();
 
-// --- Basic Styling (Inline - Move to index.css for cleaner code later) ---
-const styles = {
-  // General Layout & App Container
-  container: { maxWidth: '900px', margin: '2rem auto', padding: '1rem', fontFamily: 'Arial, sans-serif', backgroundColor: '#f0f2f5', borderRadius: '8px' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid #ccc' },
-  title: { fontSize: '1.8rem', color: '#1a2a4d' },
-  loading: { textAlign: 'center', padding: '2rem', fontSize: '1.2rem', color: '#555' },
-  grid: { display: 'grid', gridTemplateColumns: '300px 1fr', gap: '1rem' }, // Sidebar + Main Area
-  sidebar: { padding: '1rem', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #ddd', height: 'fit-content' },
-  mainArea: { padding: '1rem', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #ddd' },
-  sectionTitle: { fontSize: '1.3rem', marginBottom: '1rem', color: '#333', borderBottom: '1px solid #eee', paddingBottom: '0.5rem'},
-  button: { padding: '8px 15px', fontSize: '14px', cursor: 'pointer', borderRadius: '4px', border: '1px solid transparent', marginRight: '8px', transition: 'background-color 0.2s ease' },
-  primaryButton: { backgroundColor: '#007bff', color: 'white', borderColor: '#007bff', '&:hover': { backgroundColor: '#0056b3' } },
-  secondaryButton: { backgroundColor: '#6c757d', color: 'white', borderColor: '#6c757d', '&:hover': { backgroundColor: '#5a6268' } },
-  dangerButton: { backgroundColor: '#dc3545', color: 'white', borderColor: '#dc3545', '&:hover': { backgroundColor: '#c82333' } },
-  smallButton: { padding: '4px 8px', fontSize: '12px', marginRight: '5px'},
-  // Modals
-  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-  modalContent: { backgroundColor: 'white', padding: '20px', borderRadius: '5px', minWidth: '300px', maxWidth: '500px', boxShadow: '0 5px 15px rgba(0,0,0,0.2)' },
-  // Forms
-  formGroup: { marginBottom: '1rem' },
-  label: { display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '14px' },
-  input: { width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' },
-  textarea: { width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', minHeight: '80px' },
-  // Lists
-  listItem: { padding: '10px', borderBottom: '1px solid #eee', cursor: 'pointer', '&:hover': { backgroundColor: '#f0f0f0' }, display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  selectedItem: { backgroundColor: '#e0e0e0' },
-  needsReview: { borderLeft: '4px solid #ffc107' }, // Highlight for due topics
-  // Practice Area
-  practiceCard: { border: '1px solid #ccc', padding: '20px', marginBottom: '1rem', minHeight: '100px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1.2rem', textAlign: 'center' },
-  practiceControls: { textAlign: 'center', marginTop: '1rem'},
+// --- Theme Colors (Updated) ---
+const theme = {
+  primaryBackground: '#FFF1E0', // Main beige color
+  secondaryBackground: '#FCFCFC', // Slightly off-white for main areas/contrast
+  cardComplementary: '#E0F7FA', // Soft light cyan/blue for cards
+  accentColor: '#E1796B', // Warm accent
+  accentHover: '#D36A5C', // Darker accent for hover
+  primaryText: '#4E342E', // Darker brown for primary text on light backgrounds
+  secondaryText: '#795548', // Lighter brown/gray
+  textOnPrimary: '#4E342E', // Text color for elements on the primary background (ensure contrast)
+  textOnComplementary: '#004D40', // Dark teal text for on card background
+  borderColor: '#EAE0D5', // Soft border color
+  sidebarHover: '#EADDCB', // Hover for sidebar items (on primary bg)
+  sidebarSelected: '#DBCAB9', // Selected item in sidebar (on primary bg)
+  dangerColor: '#dc3545',
+  dangerHover: '#c82333',
+  successColor: '#28a745',
+  infoColor: '#007bff',
+  infoHover: '#0056b3',
+  cardShadow: '0 2px 6px rgba(78, 52, 46, 0.1)', // Shadow using primary text color base
 };
 
-// Simple Modal Component
+// --- Styling (Inline - Refactored for new design & colors) ---
+const styles = {
+  // General Layout & App Container
+  appWrapper: { margin: 0, padding: 0, boxSizing: 'border-box', fontFamily: 'Arial, sans-serif', backgroundColor: theme.secondaryBackground /* Default bg */ },
+  loading: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.5rem', color: theme.primaryText, backgroundColor: theme.primaryBackground },
+  globalLoadingIndicator: { position: 'fixed', top: '10px', right: '10px', backgroundColor: theme.accentColor, color: 'white', padding: '5px 10px', borderRadius: '4px', zIndex: 1050, fontSize: '12px' },
+
+  // Landing Page Styles (Updated Colors)
+  landingPageContainer: { display: 'flex', minHeight: '100vh' },
+  landingLeft: { // NOW uses primary theme color
+    flex: 1,
+    backgroundColor: theme.primaryBackground, // Use the main theme color here
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '3rem',
+    color: theme.primaryText, // Use dark text for contrast
+    textAlign: 'center',
+  },
+  landingLogo: { width: '150px', height: 'auto', marginBottom: '2rem' },
+  landingHeadline: { fontSize: '2.8rem', fontWeight: 'bold', marginBottom: '1rem', color: theme.primaryText }, // Dark text
+  landingDescription: { fontSize: '1.1rem', maxWidth: '500px', lineHeight: '1.6', color: theme.secondaryText }, // Slightly lighter dark text
+  landingRight: { // NOW uses white/off-white
+    flex: 1,
+    backgroundColor: theme.secondaryBackground, // Use off-white here
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '3rem',
+  },
+  landingLoginBox: {
+      backgroundColor: theme.secondaryBackground, // Keep white box, maybe add border
+      padding: '2.5rem',
+      borderRadius: '8px',
+      boxShadow: theme.cardShadow,
+      textAlign: 'center',
+      width: '100%',
+      maxWidth: '400px',
+      border: `1px solid ${theme.borderColor}` // Add subtle border
+  },
+  landingLoginTitle: { fontSize: '1.5rem', color: theme.primaryText, marginBottom: '1rem', fontWeight: 'bold'},
+  landingLoginSubtitle: { fontSize: '0.9rem', color: theme.secondaryText, marginBottom: '2rem'},
+  landingLoginButton: { /* Style remains the same */
+    padding: '12px 25px',
+    fontSize: '1.1rem',
+    cursor: 'pointer',
+    borderRadius: '6px',
+    border: 'none',
+    backgroundColor: theme.accentColor,
+    color: 'white',
+    fontWeight: 'bold',
+    transition: 'background-color 0.2s ease',
+    width: '100%',
+    '&:hover': { backgroundColor: theme.accentHover },
+    '&:disabled': { backgroundColor: '#ccc', cursor: 'not-allowed' }
+   },
+
+  // --- Dashboard Layout (Updated) ---
+  dashboardLayout: { display: 'flex', flexDirection: 'column', minHeight: '100vh' },
+  dashboardHeader: { // NEW Header Bar
+    height: '60px',
+    backgroundColor: theme.primaryBackground, // Use theme color
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between', // Push items to ends
+    padding: '0 2rem', // Add padding
+    borderBottom: `1px solid ${theme.borderColor}`,
+    color: theme.textOnPrimary, // Use text color suitable for primary bg
+    flexShrink: 0, // Prevent header from shrinking
+  },
+  headerLogoContainer: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  headerLogo: { height: '35px', width: 'auto', marginRight: '1rem'},
+  headerTitle: { fontSize: '1.4rem', fontWeight: 'bold', margin: 0 },
+  logoutButton: { // Style for logout button
+      padding: '8px 15px',
+      fontSize: '14px',
+      cursor: 'pointer',
+      borderRadius: '4px',
+      border: `1px solid ${theme.accentColor}`, // Border with accent
+      backgroundColor: 'transparent', // Transparent background
+      color: theme.accentColor, // Text color accent
+      transition: 'all 0.2s ease',
+      '&:hover': { backgroundColor: theme.accentColor, color: 'white' },
+      '&:disabled': { opacity: 0.5, cursor: 'not-allowed' }
+  },
+  dashboardContentArea: { // Container for sidebar + main
+      display: 'flex',
+      flexGrow: 1, // Take remaining vertical space
+      overflow: 'hidden', // Prevent double scrollbars if needed
+  },
+  dashboardSidebar: { // Updated background & text
+    width: '260px',
+    backgroundColor: theme.primaryBackground, // Use theme color
+    padding: '1.5rem 1rem',
+    display: 'flex',
+    flexDirection: 'column',
+    borderRight: `1px solid ${theme.borderColor}`,
+    color: theme.textOnPrimary, // Ensure text contrast
+    flexShrink: 0, // Prevent sidebar from shrinking
+    overflowY: 'auto', // Allow sidebar scrolling independently
+  },
+  // sidebarLogo: { /* Removed, logo is in header now */},
+  sidebarTitle: { fontSize: '1.1rem', fontWeight: 'bold', color: theme.textOnPrimary, marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${theme.borderColor}` },
+  sidebarList: { listStyle: 'none', padding: 0, margin: 0, flexGrow: 1}, // Removed overflowY, handled by sidebar container
+  topicListItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 15px',
+    margin: '2px 0',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s ease',
+    color: theme.textOnPrimary, // Ensure text contrast
+    '&:hover': { backgroundColor: theme.sidebarHover },
+  },
+  topicListItemSelected: { backgroundColor: theme.sidebarSelected, fontWeight: 'bold' },
+  topicListItemName: { flexGrow: 1, marginRight: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  topicListItemDue: { marginLeft: '5px', color: theme.accentColor, fontSize: '1.1em'}, // Review Bell
+  topicDeleteButton: { /* Style remains the same */
+    padding: '3px 6px',
+    fontSize: '11px',
+    cursor: 'pointer',
+    borderRadius: '3px',
+    border: 'none',
+    backgroundColor: theme.dangerColor,
+    color: 'white',
+    opacity: 0.7,
+    transition: 'opacity 0.2s ease',
+    '&:hover': { opacity: 1, backgroundColor: theme.dangerHover },
+    marginLeft: '5px',
+  },
+  sidebarButton: { // For "+ Add Topic", updated contrast potentially needed
+    padding: '10px 15px',
+    fontSize: '14px',
+    cursor: 'pointer',
+    borderRadius: '4px',
+    border: '1px solid transparent',
+    textAlign: 'center',
+    backgroundColor: theme.accentColor, // Accent color should be fine on primary bg
+    color: 'white',
+    width: '100%',
+    transition: 'background-color 0.2s ease',
+    marginTop: '1rem', // Ensure some space before bottom
+    '&:hover': { backgroundColor: theme.accentHover },
+    '&:disabled': { backgroundColor: '#ccc', cursor: 'not-allowed' }
+  },
+
+  // Dashboard Main Area Styles (Updated background)
+  dashboardMain: {
+      flexGrow: 1,
+      padding: '2rem',
+      overflowY: 'auto', // Allow main content scrolling
+      backgroundColor: theme.secondaryBackground, // Use off-white
+      color: theme.primaryText, // Default text color for main area
+   },
+  mainContentHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: `1px solid ${theme.borderColor}` },
+  mainContentTitle: { fontSize: '1.6rem', color: theme.primaryText, margin: 0 },
+  mainActions: { display: 'flex', gap: '10px' },
+  placeholderText: { textAlign: 'center', color: theme.secondaryText, marginTop: '4rem', fontSize: '1.1rem' },
+  sectionTitle: { fontSize: '1.3rem', color: theme.primaryText, marginBottom: '1rem', marginTop: '2rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${theme.borderColor}`},
+  actionButton: { /* Style remains similar, check contrast if needed */
+      padding: '8px 15px',
+      fontSize: '14px',
+      cursor: 'pointer',
+      borderRadius: '4px',
+      border: '1px solid transparent',
+      transition: 'background-color 0.2s ease',
+      backgroundColor: theme.infoColor,
+      color: 'white',
+      '&:hover': { backgroundColor: theme.infoHover },
+      '&:disabled': { backgroundColor: '#ccc', cursor: 'not-allowed' }
+  },
+  secondaryActionButton: {
+     backgroundColor: theme.secondaryText,
+     '&:hover': { backgroundColor: theme.primaryText },
+  },
+  primaryActionButton: {
+     backgroundColor: theme.accentColor,
+     '&:hover': { backgroundColor: theme.accentHover },
+  },
+
+  // Flashcard Styles (Updated Background & Text Color)
+  flashcardListContainer: { marginBottom: '1.5rem' },
+  flashcardGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem'},
+  flashcardItem: { // Updated background
+    backgroundColor: theme.cardComplementary, // Use complementary color
+    borderRadius: '8px',
+    padding: '15px',
+    boxShadow: theme.cardShadow, // Keep shadow
+    border: `1px solid #B2DFDB`, // Border matching complementary color (optional)
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    minHeight: '150px',
+    color: theme.textOnComplementary, // Use specific text color for contrast
+  },
+  flashcardContent: { marginBottom: '10px', flexGrow: 1 },
+  flashcardLabel: { display: 'block', fontWeight: 'bold', color: theme.textOnComplementary, fontSize: '12px', marginBottom: '3px', textTransform: 'uppercase', opacity: 0.8 },
+  flashcardText: { fontSize: '14px', color: theme.textOnComplementary, marginBottom: '10px', wordWrap: 'break-word'},
+  flashcardActions: { display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '10px', borderTop: `1px solid #B2DFDB`, paddingTop: '10px' },
+  cardActionButton: { /* Button styles might need slight contrast tweak if needed */
+     padding: '4px 8px',
+     fontSize: '12px',
+     cursor: 'pointer',
+     borderRadius: '3px',
+     border: '1px solid transparent',
+     transition: 'background-color 0.2s ease',
+  },
+  editCardButton: {
+     backgroundColor: theme.infoColor, color: 'white', '&:hover': {backgroundColor: theme.infoHover}
+  },
+   deleteCardButton: {
+     backgroundColor: theme.dangerColor, color: 'white', '&:hover': {backgroundColor: theme.dangerHover}
+  },
+  addCardButtonContainer: { marginTop: '1rem' }, // Container for the "+ Add Flashcard" button
+
+  // Practice Mode Styles (Adjust background/text if needed)
+  practiceViewContainer: { padding: '1.5rem', backgroundColor: theme.secondaryBackground, borderRadius: '8px', boxShadow: theme.cardShadow, border: `1px solid ${theme.borderColor}`}, // Stays on main bg
+  practiceHeader: { fontSize: '1.4rem', color: theme.primaryText, marginBottom: '1.5rem', textAlign: 'center' },
+  practiceCardDisplay: { // Use card color for consistency? Or keep white? Let's try card color.
+    backgroundColor: theme.cardComplementary, // Use complementary color
+    border: `1px dashed ${theme.borderColor}`, // Keep border
+    padding: '30px 20px',
+    marginBottom: '1.5rem',
+    minHeight: '150px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    fontSize: '1.5rem',
+    textAlign: 'center',
+    color: theme.textOnComplementary, // Use text for card bg
+    borderRadius: '6px',
+  },
+  practiceControls: { textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '1rem'},
+  practiceButton: { /* Styles remain the same */
+      padding: '10px 20px',
+      fontSize: '1rem',
+      cursor: 'pointer',
+      borderRadius: '4px',
+      border: '1px solid transparent',
+      transition: 'background-color 0.2s ease',
+  },
+  showAnswerButton: { backgroundColor: theme.infoColor, color: 'white', '&:hover': {backgroundColor: theme.infoHover} },
+  correctButton: { backgroundColor: theme.successColor, color: 'white', '&:hover': {backgroundColor: '#218838'} },
+  incorrectButton: { backgroundColor: theme.dangerColor, color: 'white', '&:hover': {backgroundColor: theme.dangerHover} },
+  exitPracticeButton: { backgroundColor: theme.secondaryText, color: 'white', '&:hover': {backgroundColor: theme.primaryText}, marginLeft: '25px' },
+  practiceCompleteMessage: { color: theme.successColor, fontWeight: 'bold', marginBottom: '1rem', textAlign: 'center', fontSize: '1.2rem'},
+
+
+  // Score History Styles (Adjust background/text if needed)
+  scoreHistoryList: { listStyle: 'none', padding: 0, margin: 0, maxHeight: '250px', overflowY: 'auto', border: `1px solid ${theme.borderColor}`, borderRadius: '4px', backgroundColor: theme.secondaryBackground }, // On main bg
+  scoreListItem: { display: 'flex', justifyContent: 'space-between', padding: '10px 15px', borderBottom: `1px solid ${theme.borderColor}`, fontSize: '14px', color: theme.secondaryText, '&:last-child': { borderBottom: 'none' } },
+  scoreDate: {},
+  scoreResult: { fontWeight: 'bold', color: theme.primaryText},
+
+  // Modal Styles (Remain on white background)
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+  modalContent: { backgroundColor: theme.secondaryBackground, padding: '25px', borderRadius: '8px', minWidth: '350px', maxWidth: '500px', boxShadow: '0 5px 15px rgba(0,0,0,0.2)', borderTop: `4px solid ${theme.accentColor}` },
+  modalTitle: { marginTop: 0, marginBottom: '1.5rem', borderBottom: `1px solid ${theme.borderColor}`, paddingBottom: '0.8rem', color: theme.primaryText, fontSize: '1.4rem'},
+  modalActions: { textAlign: 'right', marginTop: '2rem', paddingTop: '1rem', borderTop: `1px solid ${theme.borderColor}` },
+  modalCloseButton: {
+      padding: '8px 15px',
+      fontSize: '14px',
+      cursor: 'pointer',
+      borderRadius: '4px',
+      border: `1px solid ${theme.borderColor}`,
+      backgroundColor: theme.secondaryBackground, // Keep light
+      color: theme.secondaryText,
+      transition: 'background-color 0.2s ease',
+      '&:hover': { backgroundColor: '#eee' },
+  },
+  // Form Styles within Modals
+  formGroup: { marginBottom: '1rem' },
+  label: { display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '14px', color: theme.primaryText },
+  input: { width: '100%', padding: '10px', border: `1px solid ${theme.borderColor}`, borderRadius: '4px', boxSizing: 'border-box', fontSize: '14px', '&:focus': { borderColor: theme.accentColor, outline: 'none'} },
+  textarea: { width: '100%', padding: '10px', border: `1px solid ${theme.borderColor}`, borderRadius: '4px', boxSizing: 'border-box', minHeight: '100px', fontSize: '14px', '&:focus': { borderColor: theme.accentColor, outline: 'none'} },
+  formButton: { /* Style remains the same */
+      padding: '10px 20px',
+      fontSize: '14px',
+      cursor: 'pointer',
+      borderRadius: '4px',
+      border: '1px solid transparent',
+      backgroundColor: theme.accentColor,
+      color: 'white',
+      fontWeight: 'bold',
+      transition: 'background-color 0.2s ease',
+      '&:hover': { backgroundColor: theme.accentHover },
+      '&:disabled': { backgroundColor: '#ccc', cursor: 'not-allowed' },
+      marginRight: '10px',
+  },
+
+ // Helper to merge styles
+ mergeStyles: (...styleObjects) => Object.assign({}, ...styleObjects),
+};
+
+
+// --- Simple Modal Component (Styling unchanged) ---
 const Modal = ({ show, onClose, title, children }) => {
   if (!show) return null;
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
       <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
-        <h3 style={{ marginTop: 0, marginBottom: '1rem', borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>{title}</h3>
+        <h3 style={styles.modalTitle}>{title}</h3>
         {children}
-        <div style={{ textAlign: 'right', marginTop: '1.5rem' }}>
-          <button style={{...styles.button, ...styles.secondaryButton}} onClick={onClose}>Close</button>
-        </div>
       </div>
     </div>
   );
@@ -69,459 +358,427 @@ const Modal = ({ show, onClose, title, children }) => {
 
 // --- App Component ---
 function App() {
-  // Auth State
-  const [authClient, setAuthClient] = useState(null);
-  const [actor, setActor] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [principal, setPrincipal] = useState(null);
-
-  // Loading States
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [isDataLoading, setIsDataLoading] = useState(false); // For backend calls
-
-  // App Data State
-  const [topics, setTopics] = useState([]);
-  const [selectedTopic, setSelectedTopic] = useState(null); // Holds the full Topic object
-  const [flashcards, setFlashcards] = useState([]);
-  const [scoreHistory, setScoreHistory] = useState([]);
-
-  // UI State
-  const [showAddTopicModal, setShowAddTopicModal] = useState(false);
-  const [showAddCardModal, setShowAddCardModal] = useState(false);
-  const [showEditCardModal, setShowEditCardModal] = useState(false);
-  const [showReminderModal, setShowReminderModal] = useState(false);
-  const [editingCard, setEditingCard] = useState(null); // Holds card being edited
-
-  // Practice Mode State
-  const [inPracticeMode, setInPracticeMode] = useState(false);
-  const [practiceCards, setPracticeCards] = useState([]);
-  const [currentPracticeIndex, setCurrentPracticeIndex] = useState(0);
-  const [showPracticeAnswer, setShowPracticeAnswer] = useState(false);
-  const [practiceCorrectCount, setPracticeCorrectCount] = useState(0);
-  const [practiceIncorrectCount, setPracticeIncorrectCount] = useState(0);
-  const [practiceCompleteMessage, setPracticeCompleteMessage] = useState('');
-
-  // Form Input State
-  const [newTopicName, setNewTopicName] = useState('');
-  const [newCardFront, setNewCardFront] = useState('');
-  const [newCardBack, setNewCardBack] = useState('');
-  const [editCardFront, setEditCardFront] = useState('');
-  const [editCardBack, setEditCardBack] = useState('');
-  const [reminderDate, setReminderDate] = useState(''); // YYYY-MM-DD format
+  // ... (Keep ALL existing state, effects, and handler functions: useState, useCallback, useEffect, initAuth, updateAuthState, fetchTopics, fetchFlashcards, fetchScoreHistory, login, logout, handleAddTopic, handleDeleteTopic, handleSelectTopic, handleAddCard, openEditCardModal, handleUpdateCard, handleDeleteCard, startPractice, handlePracticeAnswer, recordPracticeScore, updateTopicNextReview, handleSetReminder) ...
+  // --- State variables ---
+    const [authClient, setAuthClient] = useState(null);
+    const [actor, setActor] = useState(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [principal, setPrincipal] = useState(null);
+    const [isAuthLoading, setIsAuthLoading] = useState(true);
+    const [isDataLoading, setIsDataLoading] = useState(false);
+    const [topics, setTopics] = useState([]);
+    const [selectedTopic, setSelectedTopic] = useState(null);
+    const [flashcards, setFlashcards] = useState([]);
+    const [scoreHistory, setScoreHistory] = useState([]);
+    const [showAddTopicModal, setShowAddTopicModal] = useState(false);
+    const [showAddCardModal, setShowAddCardModal] = useState(false);
+    const [showEditCardModal, setShowEditCardModal] = useState(false);
+    const [showReminderModal, setShowReminderModal] = useState(false);
+    const [editingCard, setEditingCard] = useState(null);
+    const [inPracticeMode, setInPracticeMode] = useState(false);
+    const [practiceCards, setPracticeCards] = useState([]);
+    const [currentPracticeIndex, setCurrentPracticeIndex] = useState(0);
+    const [showPracticeAnswer, setShowPracticeAnswer] = useState(false);
+    const [practiceCorrectCount, setPracticeCorrectCount] = useState(0);
+    const [practiceIncorrectCount, setPracticeIncorrectCount] = useState(0);
+    const [practiceCompleteMessage, setPracticeCompleteMessage] = useState('');
+    const [newTopicName, setNewTopicName] = useState('');
+    const [newCardFront, setNewCardFront] = useState('');
+    const [newCardBack, setNewCardBack] = useState('');
+    const [editCardFront, setEditCardFront] = useState('');
+    const [editCardBack, setEditCardBack] = useState('');
+    const [reminderDate, setReminderDate] = useState('');
 
   // --- Initialization ---
-  const initAuth = useCallback(async () => {
-    setIsAuthLoading(true);
-    try {
-      const client = await AuthClient.create();
-      setAuthClient(client);
-      const authenticated = await client.isAuthenticated();
-      updateAuthState(client, authenticated);
-    } catch (error) {
-      console.error("Auth initialization failed:", error);
-      alert("Error initializing authentication. Please refresh.");
-    } finally {
-      setIsAuthLoading(false);
-    }
-  }, []);
+    const initAuth = useCallback(async () => {
+        setIsAuthLoading(true);
+        try {
+            const client = await AuthClient.create();
+            setAuthClient(client);
+            const authenticated = await client.isAuthenticated();
+            updateAuthState(client, authenticated);
+        } catch (error) {
+            console.error("Auth initialization failed:", error);
+            alert("Error initializing authentication. Please refresh.");
+        } finally {
+            setIsAuthLoading(false);
+        }
+    }, []);
 
-  const updateAuthState = useCallback((client, authenticated) => {
-    setIsAuthenticated(authenticated);
-    if (authenticated) {
-      const identity = client.getIdentity();
-      const userPrincipal = identity.getPrincipal();
-      setPrincipal(userPrincipal);
-      const backendActor = createActor(canisterId, { agentOptions: { identity } });
-      setActor(backendActor);
-    } else {
-      setPrincipal(null);
-      const anonActor = createActor(canisterId, {});
-      setActor(anonActor);
-      // Clear user-specific data on logout
-      setTopics([]);
-      setSelectedTopic(null);
-      setFlashcards([]);
-      setScoreHistory([]);
-      setInPracticeMode(false); // Exit practice mode on logout
-    }
-  }, []);
+    const updateAuthState = useCallback((client, authenticated) => {
+        setIsAuthenticated(authenticated);
+        if (authenticated) {
+            const identity = client.getIdentity();
+            const userPrincipal = identity.getPrincipal();
+            setPrincipal(userPrincipal);
+            const backendActor = createActor(canisterId, { agentOptions: { identity } });
+            setActor(backendActor);
+        } else {
+            setPrincipal(null);
+            const anonActor = createActor(canisterId, {});
+            setActor(anonActor);
+            setTopics([]);
+            setSelectedTopic(null);
+            setFlashcards([]);
+            setScoreHistory([]);
+            setInPracticeMode(false);
+            setPracticeCompleteMessage('');
+        }
+    }, []);
 
-  useEffect(() => {
-    initAuth();
-  }, [initAuth]);
+    useEffect(() => {
+        initAuth();
+    }, [initAuth]);
 
-  // --- Data Fetching ---
-  const fetchTopics = useCallback(async () => {
-    if (!actor || !isAuthenticated) return;
-    setIsDataLoading(true);
-    console.log("Fetching topics...");
-    try {
-      const result = await actor.getMyTopics();
-       // Convert BigInt timestamps (Motoko Time) to JS milliseconds (Number) for easier use
-      const formattedTopics = result.map(topic => ({
-        ...topic,
-        id: Number(topic.id), // Convert BigInt ID to Number if needed, keep as BigInt if large
-        createdAt: Number(topic.createdAt / 1_000_000n),
-        nextReview: Number(topic.nextReview / 1_000_000n),
-      }));
-      setTopics(formattedTopics);
-      console.log("Topics fetched:", formattedTopics);
-    } catch (error) {
-      console.error("Failed to fetch topics:", error);
-      alert("Could not fetch your topics.");
-    } finally {
-      setIsDataLoading(false);
-    }
-  }, [actor, isAuthenticated]);
+    // --- Data Fetching ---
+    const fetchTopics = useCallback(async () => {
+        if (!actor || !isAuthenticated) return;
+        setIsDataLoading(true);
+        try {
+            const result = await actor.getMyTopics();
+            const formattedTopics = result.map(topic => ({
+                ...topic,
+                id: Number(topic.id),
+                createdAt: Number(topic.createdAt / 1_000_000n),
+                nextReview: Number(topic.nextReview / 1_000_000n),
+            })).sort((a, b) => a.name.localeCompare(b.name));
+            setTopics(formattedTopics);
+        } catch (error) {
+            console.error("Failed to fetch topics:", error);
+            alert("Could not fetch your topics.");
+        } finally {
+            setIsDataLoading(false);
+        }
+    }, [actor, isAuthenticated]);
 
-  const fetchFlashcards = useCallback(async (topicId) => {
-    if (!actor || !isAuthenticated || topicId === null) return;
-    setIsDataLoading(true);
-    setFlashcards([]); // Clear previous cards
-    console.log("Fetching flashcards for topic:", topicId);
-    try {
-      const result = await actor.getFlashcardsForTopic(BigInt(topicId)); // Ensure ID is BigInt for backend
-      if (result && result.length > 0 && result[0] !== null) { // Backend returns ?[Flashcard]
-         const formattedCards = result[0].map(card => ({
-            ...card,
-            id: Number(card.id),
-            topicId: Number(card.topicId),
-            createdAt: Number(card.createdAt / 1_000_000n),
-         }));
-         setFlashcards(formattedCards);
-         console.log("Flashcards fetched:", formattedCards);
-      } else if (result && result.length === 1 && result[0] === null) {
-         console.log("Topic exists but has no flashcards.");
-         setFlashcards([]); // Explicitly set empty array
-      } else {
-          console.warn("Topic not found or not authorized to fetch cards, result:", result);
-          alert("Could not fetch flashcards for this topic. It might not exist or you don't own it.");
-          setSelectedTopic(null); // Deselect topic if fetch fails badly
-          setFlashcards([]);
-      }
-    } catch (error) {
-      console.error("Failed to fetch flashcards:", error);
-      alert("Error fetching flashcards.");
-      setFlashcards([]);
-    } finally {
-      setIsDataLoading(false);
-    }
-  }, [actor, isAuthenticated]);
+    const fetchFlashcards = useCallback(async (topicId) => {
+        if (!actor || !isAuthenticated || topicId === null) return;
+        setIsDataLoading(true);
+        setFlashcards([]);
+        try {
+            const result = await actor.getFlashcardsForTopic(BigInt(topicId));
+            if (result && result.length > 0 && result[0] !== null) {
+                const formattedCards = result[0].map(card => ({
+                    ...card,
+                    id: Number(card.id),
+                    topicId: Number(card.topicId),
+                    createdAt: Number(card.createdAt / 1_000_000n),
+                })).sort((a, b) => a.createdAt - b.createdAt);
+                setFlashcards(formattedCards);
+            } else if (result && result.length === 1 && result[0] === null) {
+                setFlashcards([]);
+            } else {
+                setSelectedTopic(null);
+                setFlashcards([]);
+            }
+        } catch (error) {
+            console.error("Failed to fetch flashcards:", error);
+            alert("Error fetching flashcards.");
+            setFlashcards([]);
+        } finally {
+            setIsDataLoading(false);
+        }
+    }, [actor, isAuthenticated]);
 
     const fetchScoreHistory = useCallback(async (topicId) => {
-    if (!actor || !isAuthenticated || topicId === null) return;
-    setIsDataLoading(true);
-    setScoreHistory([]);
-    console.log("Fetching score history for topic:", topicId);
-    try {
-      const result = await actor.getScoreHistoryForTopic(BigInt(topicId));
-       if (result && result.length > 0 && result[0] !== null) {
-         const formattedScores = result[0].map(score => ({
-            ...score,
-            id: Number(score.id),
-            topicId: Number(score.topicId),
-            timestamp: Number(score.timestamp / 1_000_000n), // Convert ns to ms
-            // Keep counts as Number (assuming they won't exceed JS limits)
-            correctCount: Number(score.correctCount),
-            incorrectCount: Number(score.incorrectCount),
-         })).sort((a, b) => b.timestamp - a.timestamp); // Sort newest first
-         setScoreHistory(formattedScores);
-         console.log("Score history fetched:", formattedScores);
-       } else if (result && result.length === 1 && result[0] === null) {
-           console.log("Topic exists but has no score history.");
-           setScoreHistory([]);
-       }
-        else {
-          console.warn("Topic not found or not authorized to fetch scores, result:", result);
-          // Don't alert here, just show no history
-           setScoreHistory([]);
-      }
-    } catch (error) {
-      console.error("Failed to fetch score history:", error);
-      alert("Error fetching score history.");
-      setScoreHistory([]);
-    } finally {
-      setIsDataLoading(false);
-    }
-  }, [actor, isAuthenticated]);
-
-
-  // Fetch topics on login
-  useEffect(() => {
-    if (isAuthenticated && actor) {
-      fetchTopics();
-    }
-  }, [isAuthenticated, actor, fetchTopics]);
-
-  // Fetch cards and scores when topic selected
-  useEffect(() => {
-    if (selectedTopic && actor) {
-      fetchFlashcards(selectedTopic.id);
-      fetchScoreHistory(selectedTopic.id);
-      setInPracticeMode(false); // Exit practice if topic changes
-    } else {
-        setFlashcards([]); // Clear if no topic selected
+        if (!actor || !isAuthenticated || topicId === null) return;
+        setIsDataLoading(true);
         setScoreHistory([]);
-    }
-  }, [selectedTopic, actor, fetchFlashcards, fetchScoreHistory]);
-
-
-  // --- Auth Handlers ---
-  const login = async () => { /* ... (same as Step 1) ... */
-      if (!authClient || isAuthLoading) return;
-      setIsAuthLoading(true);
-      try {
-        await authClient.login({
-          identityProvider: internetIdentityUrl,
-          onSuccess: async () => {
-            const authenticated = await authClient.isAuthenticated();
-            updateAuthState(authClient, authenticated);
-            alert('Login Successful!');
-          },
-          onError: (error) => {
-            console.error("Login failed:", error);
-            alert(`Login Failed: ${error || 'Unknown error'}`);
-          },
-        });
-      } catch (error) {
-          console.error("Login exception:", error);
-          alert('Login Error: An unexpected error occurred.');
-      } finally {
-           setIsAuthLoading(false);
-      }
-   };
-  const logout = async () => { /* ... (same as Step 1) ... */
-      if (!authClient || isAuthLoading) return;
-      setIsAuthLoading(true);
-      try {
-        await authClient.logout();
-        updateAuthState(authClient, false);
-        alert('Logged Out Successfully.');
-      } catch (error) {
-          console.error("Logout failed:", error);
-          alert('Logout Error: Failed to logout.');
-      } finally {
-          setIsAuthLoading(false);
-      }
-   };
-
-
-  // --- Topic Handlers ---
-  const handleAddTopic = async (e) => {
-    e.preventDefault();
-    if (!actor || !newTopicName.trim()) return;
-    setIsDataLoading(true);
-    try {
-      // Set initial review time to now (or adjust as needed)
-      const initialReviewNanos = BigInt(Date.now()) * 1_000_000n;
-      const result = await actor.createTopic(newTopicName.trim(), initialReviewNanos);
-      if (result && result.length > 0 && result[0]) { // Check Option<Topic>
-        alert("Topic created successfully!");
-        setNewTopicName('');
-        setShowAddTopicModal(false);
-        fetchTopics(); // Refresh list
-      } else {
-        alert("Failed to create topic. Name might be empty or an error occurred.");
-      }
-    } catch (error) {
-      console.error("Create topic error:", error);
-      alert("Error creating topic.");
-    } finally {
-      setIsDataLoading(false);
-    }
-  };
-
-  const handleDeleteTopic = async (topicId) => {
-    if (!actor || !window.confirm(`Are you sure you want to delete topic ${topicId} and all its cards/scores? This cannot be undone.`)) return;
-    setIsDataLoading(true);
-    try {
-      const success = await actor.deleteTopic(BigInt(topicId));
-      if (success) {
-        alert("Topic deleted successfully.");
-        if(selectedTopic?.id === topicId) setSelectedTopic(null); // Deselect if deleted
-        fetchTopics(); // Refresh list
-      } else {
-        alert("Failed to delete topic. You might not own it or it doesn't exist.");
-      }
-    } catch (error) {
-      console.error("Delete topic error:", error);
-      alert("Error deleting topic.");
-    } finally {
-      setIsDataLoading(false);
-    }
-  };
-
-  const handleSelectTopic = (topic) => {
-    if (inPracticeMode && !window.confirm("Changing topics will exit practice mode. Continue?")) {
-      return;
-    }
-    setSelectedTopic(topic);
-  };
-
-
-  // --- Flashcard Handlers ---
-    const handleAddCard = async (e) => {
-    e.preventDefault();
-    if (!actor || !selectedTopic || !newCardFront.trim() || !newCardBack.trim()) return;
-    setIsDataLoading(true);
-    try {
-        const result = await actor.createFlashcard(BigInt(selectedTopic.id), newCardFront.trim(), newCardBack.trim());
-         if (result && result.length > 0 && result[0]) { // Check Option<Flashcard>
-             alert("Flashcard created successfully!");
-             setNewCardFront('');
-             setNewCardBack('');
-             setShowAddCardModal(false);
-             fetchFlashcards(selectedTopic.id); // Refresh list
-         } else {
-            alert("Failed to create flashcard. Check inputs or topic ownership.");
-         }
-    } catch (error) {
-        console.error("Create card error:", error);
-        alert("Error creating flashcard.");
-    } finally {
-        setIsDataLoading(false);
-    }
-  };
-
-  const openEditCardModal = (card) => {
-    setEditingCard(card);
-    setEditCardFront(card.front);
-    setEditCardBack(card.back);
-    setShowEditCardModal(true);
-  };
-
-  const handleUpdateCard = async (e) => {
-    e.preventDefault();
-     if (!actor || !editingCard || !editCardFront.trim() || !editCardBack.trim()) return;
-     setIsDataLoading(true);
-     try {
-        const success = await actor.updateFlashcard(BigInt(editingCard.id), editCardFront.trim(), editCardBack.trim());
-        if(success) {
-            alert("Flashcard updated successfully!");
-            setShowEditCardModal(false);
-            setEditingCard(null);
-            fetchFlashcards(selectedTopic.id); // Refresh list
-        } else {
-             alert("Failed to update flashcard. You might not own it or it doesn't exist.");
-        }
-     } catch (error) {
-         console.error("Update card error:", error);
-         alert("Error updating flashcard.");
-     } finally {
-        setIsDataLoading(false);
-     }
-  };
-
-  const handleDeleteCard = async (cardId) => {
-    if (!actor || !window.confirm(`Delete flashcard ${cardId}?`)) return;
-    setIsDataLoading(true);
-    try {
-        const success = await actor.deleteFlashcard(BigInt(cardId));
-         if (success) {
-            alert("Flashcard deleted successfully.");
-            fetchFlashcards(selectedTopic.id); // Refresh list
-         } else {
-             alert("Failed to delete flashcard. You might not own it or it doesn't exist.");
-         }
-    } catch (error) {
-        console.error("Delete card error:", error);
-        alert("Error deleting flashcard.");
-    } finally {
-        setIsDataLoading(false);
-    }
-  };
-
-
-  // --- Practice Mode Handlers ---
-  const startPractice = () => {
-    if (!selectedTopic || flashcards.length === 0) {
-      alert("Select a topic with cards to practice.");
-      return;
-    }
-    // Simple shuffle: sort randomly
-    setPracticeCards([...flashcards].sort(() => 0.5 - Math.random()));
-    setCurrentPracticeIndex(0);
-    setPracticeCorrectCount(0);
-    setPracticeIncorrectCount(0);
-    setShowPracticeAnswer(false);
-    setPracticeCompleteMessage('');
-    setInPracticeMode(true);
-  };
-
-  const handlePracticeAnswer = (correct) => {
-    if (!inPracticeMode) return;
-
-    if(correct) setPracticeCorrectCount(count => count + 1);
-    else setPracticeIncorrectCount(count => count + 1);
-
-    // Move to next card or finish
-    if (currentPracticeIndex + 1 < practiceCards.length) {
-      setCurrentPracticeIndex(index => index + 1);
-      setShowPracticeAnswer(false); // Hide answer for next card
-    } else {
-      // Practice finished
-      const finalCorrect = practiceCorrectCount + (correct ? 1 : 0); // Include last answer
-      const finalIncorrect = practiceIncorrectCount + (correct ? 0 : 1);
-      const total = practiceCards.length;
-      setPracticeCompleteMessage(`Practice Complete! Score: ${finalCorrect} / ${total}`);
-      setInPracticeMode(false); // Exit practice mode UI
-      // Record score in backend
-      recordPracticeScore(finalCorrect, finalIncorrect);
-    }
-  };
-
-    const recordPracticeScore = async (finalCorrect, finalIncorrect) => {
-        if (!actor || !selectedTopic) return;
-        setIsDataLoading(true); // Indicate backend activity
         try {
-            const result = await actor.recordScore(BigInt(selectedTopic.id), BigInt(finalCorrect), BigInt(finalIncorrect));
-             if (result && result.length > 0 && result[0] !== null) { // Check Option<ScoreId>
-                console.log("Score recorded successfully, ID:", result[0]);
-                fetchScoreHistory(selectedTopic.id); // Refresh history display
-             } else {
-                alert("Failed to record score.");
-             }
-        } catch(error) {
-            console.error("Record score error:", error);
-            alert("Error recording score.");
+            const result = await actor.getScoreHistoryForTopic(BigInt(topicId));
+            if (result && result.length > 0 && result[0] !== null) {
+                const formattedScores = result[0].map(score => ({
+                    ...score,
+                    id: Number(score.id),
+                    topicId: Number(score.topicId),
+                    timestamp: Number(score.timestamp / 1_000_000n),
+                    correctCount: Number(score.correctCount),
+                    incorrectCount: Number(score.incorrectCount),
+                })).sort((a, b) => b.timestamp - a.timestamp);
+                setScoreHistory(formattedScores);
+            } else if (result && result.length === 1 && result[0] === null) {
+                setScoreHistory([]);
+            } else {
+                setScoreHistory([]);
+            }
+        } catch (error) {
+            console.error("Failed to fetch score history:", error);
+            alert("Error fetching score history.");
+            setScoreHistory([]);
+        } finally {
+            setIsDataLoading(false);
+        }
+    }, [actor, isAuthenticated]);
+
+    useEffect(() => {
+        if (isAuthenticated && actor) {
+            fetchTopics();
+        }
+    }, [isAuthenticated, actor, fetchTopics]);
+
+    useEffect(() => {
+        if (selectedTopic && actor) {
+            setPracticeCompleteMessage('');
+            fetchFlashcards(selectedTopic.id);
+            fetchScoreHistory(selectedTopic.id);
+            setInPracticeMode(false);
+        } else {
+            setFlashcards([]);
+            setScoreHistory([]);
+        }
+    }, [selectedTopic, actor, fetchFlashcards, fetchScoreHistory]);
+
+    // --- Auth Handlers ---
+    const login = async () => {
+        if (!authClient || isAuthLoading) return;
+        setIsAuthLoading(true);
+        try {
+            await authClient.login({
+                identityProvider: internetIdentityUrl,
+                onSuccess: async () => {
+                    const authenticated = await authClient.isAuthenticated();
+                    updateAuthState(authClient, authenticated);
+                },
+                onError: (error) => {
+                    console.error("Login failed:", error);
+                    alert(`Login Failed: ${error || 'Unknown error'}`);
+                },
+            });
+        } catch (error) {
+            console.error("Login exception:", error);
+            alert('Login Error: An unexpected error occurred.');
+        } finally {
+            setIsAuthLoading(false);
+        }
+    };
+    const logout = async () => {
+        if (!authClient || isAuthLoading) return;
+        setIsAuthLoading(true);
+        try {
+            await authClient.logout();
+            updateAuthState(authClient, false);
+        } catch (error) {
+            console.error("Logout failed:", error);
+            alert('Logout Error: Failed to logout.');
+        } finally {
+            setIsAuthLoading(false);
+        }
+    };
+
+    // --- Topic Handlers ---
+    const handleAddTopic = async (e) => {
+        e.preventDefault();
+        if (!actor || !newTopicName.trim()) return;
+        setIsDataLoading(true);
+        try {
+            const initialReviewNanos = BigInt(Date.now()) * 1_000_000n;
+            const result = await actor.createTopic(newTopicName.trim(), initialReviewNanos);
+            if (result && result.length > 0 && result[0]) {
+                setNewTopicName('');
+                setShowAddTopicModal(false);
+                fetchTopics();
+            } else {
+                alert("Failed to create topic.");
+            }
+        } catch (error) {
+            console.error("Create topic error:", error);
+            alert("Error creating topic.");
         } finally {
             setIsDataLoading(false);
         }
     };
 
-
-  // --- Reminder Handler ---
-  const handleSetReminder = async (e) => {
-    e.preventDefault();
-    if (!actor || !selectedTopic || !reminderDate) return;
-    setIsDataLoading(true);
-    try {
-        // Convert YYYY-MM-DD string to timestamp in nanoseconds (use start of day UTC)
-        const dateObj = new Date(reminderDate + 'T00:00:00Z');
-        const timestampMillis = dateObj.getTime();
-        if (isNaN(timestampMillis) || timestampMillis <= Date.now()) {
-            alert("Please select a valid future date.");
+    const handleDeleteTopic = async (topicId, topicName) => {
+        if (!actor || !window.confirm(`Delete topic "${topicName}" and all related data?`)) return;
+        setIsDataLoading(true);
+        try {
+            const success = await actor.deleteTopic(BigInt(topicId));
+            if (success) {
+                if(selectedTopic?.id === topicId) setSelectedTopic(null);
+                fetchTopics();
+            } else {
+                alert("Failed to delete topic.");
+            }
+        } catch (error) {
+            console.error("Delete topic error:", error);
+            alert("Error deleting topic.");
+        } finally {
             setIsDataLoading(false);
+        }
+    };
+
+    const handleSelectTopic = (topic) => {
+        if (inPracticeMode && selectedTopic?.id !== topic.id) {
+            if (!window.confirm("Exit current practice session?")) {
+                return;
+            }
+        }
+        setSelectedTopic(topic);
+        setInPracticeMode(false);
+    };
+
+    // --- Flashcard Handlers ---
+    const handleAddCard = async (e) => {
+        e.preventDefault();
+        if (!actor || !selectedTopic || !newCardFront.trim() || !newCardBack.trim()) return;
+        setIsDataLoading(true);
+        try {
+            const result = await actor.createFlashcard(BigInt(selectedTopic.id), newCardFront.trim(), newCardBack.trim());
+            if (result && result.length > 0 && result[0]) {
+                setNewCardFront('');
+                setNewCardBack('');
+                setShowAddCardModal(false);
+                fetchFlashcards(selectedTopic.id);
+            } else {
+                alert("Failed to create flashcard.");
+            }
+        } catch (error) {
+            console.error("Create card error:", error);
+            alert("Error creating flashcard.");
+        } finally {
+            setIsDataLoading(false);
+        }
+    };
+
+    const openEditCardModal = (card) => {
+        setEditingCard(card);
+        setEditCardFront(card.front);
+        setEditCardBack(card.back);
+        setShowEditCardModal(true);
+    };
+
+    const handleUpdateCard = async (e) => {
+        e.preventDefault();
+        if (!actor || !editingCard || !editCardFront.trim() || !editCardBack.trim()) return;
+        setIsDataLoading(true);
+        try {
+            const success = await actor.updateFlashcard(BigInt(editingCard.id), editCardFront.trim(), editCardBack.trim());
+            if(success) {
+                setShowEditCardModal(false);
+                setEditingCard(null);
+                fetchFlashcards(selectedTopic.id);
+            } else {
+                alert("Failed to update flashcard.");
+            }
+        } catch (error) {
+            console.error("Update card error:", error);
+            alert("Error updating flashcard.");
+        } finally {
+            setIsDataLoading(false);
+        }
+    };
+
+    const handleDeleteCard = async (cardId) => {
+        if (!actor || !window.confirm(`Delete this flashcard?`)) return;
+        setIsDataLoading(true);
+        try {
+            const success = await actor.deleteFlashcard(BigInt(cardId));
+            if (success) {
+                fetchFlashcards(selectedTopic.id);
+            } else {
+                alert("Failed to delete flashcard.");
+            }
+        } catch (error) {
+            console.error("Delete card error:", error);
+            alert("Error deleting flashcard.");
+        } finally {
+            setIsDataLoading(false);
+        }
+    };
+
+    // --- Practice Mode Handlers ---
+    const startPractice = () => {
+        if (!selectedTopic || flashcards.length === 0) {
+            alert("Select a topic with cards to practice.");
             return;
         }
-        const timestampNanos = BigInt(timestampMillis) * 1_000_000n;
+        setPracticeCards([...flashcards].sort(() => 0.5 - Math.random()));
+        setCurrentPracticeIndex(0);
+        setPracticeCorrectCount(0);
+        setPracticeIncorrectCount(0);
+        setShowPracticeAnswer(false);
+        setPracticeCompleteMessage('');
+        setInPracticeMode(true);
+    };
 
-        const success = await actor.setTopicNextReview(BigInt(selectedTopic.id), timestampNanos);
-        if (success) {
+    const handlePracticeAnswer = (correct) => {
+        if (!inPracticeMode) return;
+        const currentCorrect = practiceCorrectCount + (correct ? 1 : 0);
+        const currentIncorrect = practiceIncorrectCount + (correct ? 0 : 1);
+        if(correct) setPracticeCorrectCount(count => count + 1);
+        else setPracticeIncorrectCount(count => count + 1);
+
+        if (currentPracticeIndex + 1 < practiceCards.length) {
+            setCurrentPracticeIndex(index => index + 1);
+            setShowPracticeAnswer(false);
+        } else {
+            const total = practiceCards.length;
+            setPracticeCompleteMessage(`Practice Complete! Score: ${currentCorrect} / ${total}`);
+            setInPracticeMode(false);
+            recordPracticeScore(currentCorrect, currentIncorrect);
+            // Simple SRS Logic Placeholder
+            const performanceRatio = total > 0 ? currentCorrect / total : 0;
+            const oneDayMillis = 24 * 60 * 60 * 1000;
+            let nextReviewDelayMillis = oneDayMillis;
+            if (performanceRatio >= 0.9) nextReviewDelayMillis = oneDayMillis * 7;
+            else if (performanceRatio >= 0.6) nextReviewDelayMillis = oneDayMillis * 3;
+            const nextReviewTime = Date.now() + nextReviewDelayMillis;
+            updateTopicNextReview(nextReviewTime);
+        }
+    };
+
+    const recordPracticeScore = async (finalCorrect, finalIncorrect) => {
+        if (!actor || !selectedTopic) return;
+        try {
+            const result = await actor.recordScore(BigInt(selectedTopic.id), BigInt(finalCorrect), BigInt(finalIncorrect));
+            if (result && result.length > 0 && result[0] !== null) {
+                fetchScoreHistory(selectedTopic.id);
+            } else {
+                console.error("Failed to record score.");
+            }
+        } catch(error) {
+            console.error("Record score error:", error);
+        }
+    };
+
+    const updateTopicNextReview = async (nextReviewTimestampMillis) => {
+        if (!actor || !selectedTopic) return;
+        const timestampNanos = BigInt(nextReviewTimestampMillis) * 1_000_000n;
+        try {
+            const success = await actor.setTopicNextReview(BigInt(selectedTopic.id), timestampNanos);
+            if (success) {
+                fetchTopics();
+            } else {
+                console.error("Failed to update next review time.");
+            }
+        } catch (error) {
+            console.error("Error setting next review time:", error);
+        }
+    };
+
+    // --- Reminder Handler ---
+    const handleSetReminder = async (e) => {
+        e.preventDefault();
+        if (!actor || !selectedTopic || !reminderDate) return;
+        setIsDataLoading(true);
+        try {
+            const dateObj = new Date(reminderDate + 'T00:00:00Z');
+            const timestampMillis = dateObj.getTime();
+            if (isNaN(timestampMillis) || timestampMillis <= Date.now()) {
+                alert("Please select a valid future date.");
+                setIsDataLoading(false);
+                return;
+            }
+            await updateTopicNextReview(timestampMillis);
             alert("Reminder set successfully!");
             setShowReminderModal(false);
             setReminderDate('');
-            fetchTopics(); // Refresh topic list to show updated review time (or update locally)
-        } else {
-            alert("Failed to set reminder. Topic may not exist or you don't own it.");
+        } catch (error) {
+            alert("Error setting reminder.");
+        } finally {
+            setIsDataLoading(false);
         }
-    } catch (error) {
-        console.error("Set reminder error:", error);
-        alert("Error setting reminder.");
-    } finally {
-        setIsDataLoading(false);
-    }
-  };
+    };
 
 
   // --- Render Logic ---
@@ -530,217 +787,238 @@ function App() {
   }
 
   // Determine current practice card
-  const currentCard = inPracticeMode ? practiceCards[currentPracticeIndex] : null;
+  const currentPracticeCard = inPracticeMode ? practiceCards[currentPracticeIndex] : null;
 
   return (
-    <div style={styles.container}>
-      {/* --- Header --- */}
-      <header style={styles.header}>
-        <h1 style={styles.title}>ICP Flashcards</h1>
-        <div>
-          {isAuthenticated ? (
-            <>
-              <span style={{ marginRight: '1rem', fontSize: '12px', color: '#555' }}>
-                User: {principal?.toString().substring(0, 5)}...
-              </span>
-              <button style={{...styles.button, ...styles.secondaryButton}} onClick={logout} disabled={isAuthLoading || isDataLoading}>Logout</button>
-            </>
-          ) : (
-            <button style={{...styles.button, ...styles.primaryButton}} onClick={login} disabled={isAuthLoading}>Login</button>
-          )}
-        </div>
-      </header>
+    <div style={styles.appWrapper}>
+      {isDataLoading && <div style={styles.globalLoadingIndicator}>Loading...</div>}
 
-      {/* --- Loading Indicator --- */}
-      {isDataLoading && <div style={{ color: '#007bff', marginBottom: '1rem', textAlign: 'center' }}>Loading data...</div>}
-
-      {/* --- Main Content Grid --- */}
-      {isAuthenticated ? (
-        <div style={styles.grid}>
-          {/* --- Sidebar (Topics) --- */}
-          <div style={styles.sidebar}>
-            <h2 style={styles.sectionTitle}>Topics</h2>
-            {topics.length === 0 && <p style={{fontSize: '14px', color: '#666'}}>No topics yet.</p>}
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, marginBottom: '1rem' }}>
-              {topics.map(topic => {
-                 const isSelected = selectedTopic?.id === topic.id;
-                 const isDue = topic.nextReview <= Date.now();
-                 // Combine styles conditionally
-                 let itemStyle = {...styles.listItem};
-                 if (isSelected) itemStyle = {...itemStyle, ...styles.selectedItem};
-                 if (isDue && !isSelected) itemStyle = {...itemStyle, ...styles.needsReview }; // Only add border if not selected
-
-                 return (
-                    <li key={topic.id.toString()} style={itemStyle} onClick={() => handleSelectTopic(topic)}>
-                       <span style={{ fontWeight: isSelected ? 'bold' : 'normal', flexGrow: 1, marginRight: '10px' }}>
-                          {topic.name} {isDue && '🔔'} {/* Simple indicator */}
-                       </span>
-                       <button
-                          style={{...styles.button, ...styles.dangerButton, ...styles.smallButton}}
-                          onClick={(e) => { e.stopPropagation(); handleDeleteTopic(topic.id); }}
-                          disabled={isDataLoading}
-                       >
-                          Del
-                       </button>
-                    </li>
-                );
-              })}
-            </ul>
-            <button style={{...styles.button, ...styles.primaryButton, width: '100%'}} onClick={() => setShowAddTopicModal(true)} disabled={isDataLoading}>+ Add Topic</button>
+      {!isAuthenticated ? (
+        // --- Landing Page ---
+        <div style={styles.landingPageContainer}>
+          <div style={styles.landingLeft}>
+            <img src={logoImage} alt="App Logo" style={styles.landingLogo} />
+            <h1 style={styles.landingHeadline}>Sekai Learn</h1>
+            <p style={styles.landingDescription}>
+              Master anything. Decentralized flashcards on the Internet Computer. Safe, private, yours.
+            </p>
           </div>
-
-          {/* --- Main Area (Cards, Practice, History) --- */}
-          <div style={styles.mainArea}>
-            {!selectedTopic ? (
-              <p style={{ textAlign: 'center', color: '#666', marginTop: '2rem' }}>Select a topic from the left to view flashcards and practice.</p>
-            ) : (
-              <div>
-                 {/* --- Practice Mode --- */}
-                 {inPracticeMode ? (
-                     <div>
-                         <h2 style={styles.sectionTitle}>Practice: {selectedTopic.name} ({currentPracticeIndex + 1} / {practiceCards.length})</h2>
-                         <div style={styles.practiceCard}>
-                           {currentCard ? (showPracticeAnswer ? currentCard.back : currentCard.front) : 'Loading card...'}
-                         </div>
-                         <div style={styles.practiceControls}>
-                           {!showPracticeAnswer ? (
-                             <button style={{...styles.button, ...styles.primaryButton}} onClick={() => setShowPracticeAnswer(true)}>Show Answer</button>
-                           ) : (
-                             <>
-                               <button style={{...styles.button, backgroundColor: '#28a745', color: 'white'}} onClick={() => handlePracticeAnswer(true)}>Correct</button>
-                               <button style={{...styles.button, ...styles.dangerButton}} onClick={() => handlePracticeAnswer(false)}>Incorrect</button>
-                             </>
-                           )}
-                           <button style={{...styles.button, ...styles.secondaryButton, marginLeft: '20px'}} onClick={() => setInPracticeMode(false)}>Exit Practice</button>
-                         </div>
-                     </div>
-                 ) : (
-                    <>
-                        {/* --- Topic Header & Actions --- */}
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
-                           <h2 style={styles.sectionTitle} title={`ID: ${selectedTopic.id}`}>Topic: {selectedTopic.name}</h2>
-                           <div>
-                                {flashcards.length > 0 &&
-                                    <button style={{...styles.button, ...styles.primaryButton}} onClick={startPractice} disabled={isDataLoading}>Start Practice</button>
-                                }
-                               <button style={{...styles.button, ...styles.secondaryButton}} onClick={() => setShowReminderModal(true)} disabled={isDataLoading}>Set Reminder</button>
-                           </div>
-                        </div>
-                        {practiceCompleteMessage && <p style={{color: 'green', fontWeight: 'bold', marginBottom: '1rem'}}>{practiceCompleteMessage}</p>}
-
-
-                        {/* --- Flashcard List --- */}
-                        <h3 style={{fontSize: '1.1rem', color: '#444', marginBottom: '0.5rem'}}>Flashcards ({flashcards.length})</h3>
-                         {flashcards.length === 0 && <p style={{fontSize: '14px', color: '#666'}}>No flashcards in this topic yet.</p>}
-                        <ul style={{ listStyle: 'none', padding: 0, margin: 0, marginBottom: '1.5rem', maxHeight: '300px', overflowY: 'auto', border: '1px solid #eee' }}>
-                            {flashcards.map(card => (
-                                <li key={card.id.toString()} style={{...styles.listItem, cursor: 'default'}}>
-                                   <div style={{flexGrow: 1, marginRight: '10px'}}>
-                                       <strong style={{display: 'block', fontSize: '14px'}}>Front:</strong> <span style={{fontSize: '14px'}}>{card.front}</span>
-                                       <strong style={{display: 'block', fontSize: '14px', marginTop:'4px'}}>Back:</strong> <span style={{fontSize: '14px'}}>{card.back}</span>
-                                   </div>
-                                   <div>
-                                      <button style={{...styles.button, ...styles.secondaryButton, ...styles.smallButton}} onClick={() => openEditCardModal(card)} disabled={isDataLoading}>Edit</button>
-                                      <button style={{...styles.button, ...styles.dangerButton, ...styles.smallButton}} onClick={() => handleDeleteCard(card.id)} disabled={isDataLoading}>Del</button>
-                                   </div>
-                                </li>
-                            ))}
-                        </ul>
-                        <button style={{...styles.button, ...styles.primaryButton}} onClick={() => setShowAddCardModal(true)} disabled={isDataLoading}>+ Add Flashcard</button>
-
-                        <hr style={{margin: '2rem 0'}}/>
-
-                        {/* --- Score History --- */}
-                        <h3 style={{fontSize: '1.1rem', color: '#444', marginBottom: '0.5rem'}}>Score History</h3>
-                         {scoreHistory.length === 0 && <p style={{fontSize: '14px', color: '#666'}}>No practice sessions recorded yet.</p>}
-                        <ul style={{listStyle: 'none', padding: 0, margin: 0, maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee'}}>
-                             {scoreHistory.map(score => (
-                                 <li key={score.id.toString()} style={{...styles.listItem, cursor: 'default', fontSize: '14px'}}>
-                                     <span>{new Date(score.timestamp).toLocaleString()}</span>
-                                     <span>Score: {score.correctCount} / {score.correctCount + score.incorrectCount}</span>
-                                 </li>
-                             ))}
-                        </ul>
-                    </>
-                 )}
-              </div>
-            )}
+          <div style={styles.landingRight}>
+             <div style={styles.landingLoginBox}>
+                <h2 style={styles.landingLoginTitle}>Choose Identity 🔑</h2>
+                <p style={styles.landingLoginSubtitle}>to continue</p>
+                <button
+                    style={styles.landingLoginButton}
+                    onClick={login}
+                    disabled={isAuthLoading}
+                 >
+                    Login with Internet Identity
+                 </button>
+            </div>
           </div>
         </div>
       ) : (
-        <p style={{ textAlign: 'center', color: '#666', marginTop: '2rem' }}>Please log in to manage your flashcards.</p>
+        // --- Dashboard ---
+        <div style={styles.dashboardLayout}>
+            {/* --- Header --- */}
+            <div style={styles.dashboardHeader}>
+                <div style={styles.headerLogoContainer}>
+                   <img src={logoImage} alt="App Logo" style={styles.headerLogo} />
+                   <h1 style={styles.headerTitle}>Sekai Learn</h1>
+                </div>
+                <button style={styles.logoutButton} onClick={logout} disabled={isAuthLoading}>
+                    Logout ({principal?.toString().substring(0, 5)}...)
+                </button>
+            </div>
+
+            {/* --- Content Area (Sidebar + Main) --- */}
+            <div style={styles.dashboardContentArea}>
+                {/* --- Sidebar --- */}
+                <div style={styles.dashboardSidebar}>
+                    <h2 style={styles.sidebarTitle}>Topics</h2>
+                    <ul style={styles.sidebarList}>
+                    {topics.length === 0 && <li style={{...styles.topicListItem, color: theme.secondaryText, cursor: 'default', fontStyle: 'italic'}}>No topics yet.</li>}
+                    {topics.map(topic => {
+                        const isSelected = selectedTopic?.id === topic.id;
+                        const isDue = topic.nextReview <= Date.now();
+                        const itemStyle = isSelected
+                        ? styles.mergeStyles(styles.topicListItem, styles.topicListItemSelected)
+                        : styles.topicListItem;
+
+                        return (
+                        <li key={topic.id.toString()} style={itemStyle} onClick={() => handleSelectTopic(topic)} title={topic.name}>
+                            <span style={styles.topicListItemName}>
+                                {topic.name}
+                                {isDue && <span style={styles.topicListItemDue} title="Review Due"> 🔔</span>}
+                            </span>
+                            <button
+                                style={styles.topicDeleteButton}
+                                onClick={(e) => { e.stopPropagation(); handleDeleteTopic(topic.id, topic.name); }}
+                                disabled={isDataLoading}
+                                title={`Delete topic "${topic.name}"`}
+                            >
+                                ✕
+                            </button>
+                        </li>
+                        );
+                    })}
+                    </ul>
+                    <button style={styles.sidebarButton} onClick={() => setShowAddTopicModal(true)} disabled={isDataLoading}>
+                        + Add Topic
+                    </button>
+                </div>
+
+                {/* --- Main Content --- */}
+                <div style={styles.dashboardMain}>
+                    {!selectedTopic ? (
+                    <p style={styles.placeholderText}>Select a topic from the sidebar to start learning!</p>
+                    ) : (
+                    <div>
+                        {/* --- Practice Mode View --- */}
+                        {inPracticeMode ? (
+                            <div style={styles.practiceViewContainer}>
+                                <h2 style={styles.practiceHeader}>Practice: {selectedTopic.name} ({currentPracticeIndex + 1} / {practiceCards.length})</h2>
+                                <div style={styles.practiceCardDisplay}>
+                                {currentPracticeCard ? (showPracticeAnswer ? currentPracticeCard.back : currentPracticeCard.front) : 'Loading card...'}
+                                </div>
+                                <div style={styles.practiceControls}>
+                                {!showPracticeAnswer ? (
+                                    <button style={styles.mergeStyles(styles.practiceButton, styles.showAnswerButton)} onClick={() => setShowPracticeAnswer(true)}>Show Answer</button>
+                                ) : (
+                                    <>
+                                    <button style={styles.mergeStyles(styles.practiceButton, styles.correctButton)} onClick={() => handlePracticeAnswer(true)}>Correct</button>
+                                    <button style={styles.mergeStyles(styles.practiceButton, styles.incorrectButton)} onClick={() => handlePracticeAnswer(false)}>Incorrect</button>
+                                    </>
+                                )}
+                                <button style={styles.mergeStyles(styles.practiceButton, styles.exitPracticeButton)} onClick={() => setInPracticeMode(false)}>Exit Practice</button>
+                                </div>
+                            </div>
+                        ) : (
+                            // --- Topic Detail View (Cards & History) ---
+                            <>
+                                <div style={styles.mainContentHeader}>
+                                <h1 style={styles.mainContentTitle} title={`ID: ${selectedTopic.id}`}>{selectedTopic.name}</h1>
+                                <div style={styles.mainActions}>
+                                    {flashcards.length > 0 &&
+                                        <button style={styles.mergeStyles(styles.actionButton, styles.primaryActionButton)} onClick={startPractice} disabled={isDataLoading}>Start Practice</button>
+                                    }
+                                    <button style={styles.mergeStyles(styles.actionButton, styles.secondaryActionButton)} onClick={() => setShowReminderModal(true)} disabled={isDataLoading}>Set Reminder</button>
+                                </div>
+                                </div>
+
+                                {practiceCompleteMessage && <p style={styles.practiceCompleteMessage}>{practiceCompleteMessage}</p>}
+
+                                {/* --- Flashcard List/Grid --- */}
+                                <h2 style={styles.sectionTitle}>Flashcards ({flashcards.length})</h2>
+                                {flashcards.length === 0 && <p style={{fontSize: '14px', color: theme.secondaryText}}>No flashcards in this topic yet. Create one!</p>}
+
+                                <div style={styles.flashcardGrid}>
+                                    {flashcards.map(card => (
+                                        <div key={card.id.toString()} style={styles.flashcardItem}>
+                                        <div style={styles.flashcardContent}>
+                                            <div>
+                                                <span style={styles.flashcardLabel}>Front</span>
+                                                <p style={styles.flashcardText}>{card.front}</p>
+                                            </div>
+                                            <div>
+                                                <span style={styles.flashcardLabel}>Back</span>
+                                                <p style={styles.flashcardText}>{card.back}</p>
+                                            </div>
+                                        </div>
+                                        <div style={styles.flashcardActions}>
+                                            <button style={styles.mergeStyles(styles.cardActionButton, styles.editCardButton)} onClick={() => openEditCardModal(card)} disabled={isDataLoading}>Edit</button>
+                                            <button style={styles.mergeStyles(styles.cardActionButton, styles.deleteCardButton)} onClick={() => handleDeleteCard(card.id)} disabled={isDataLoading}>Delete</button>
+                                        </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div style={styles.addCardButtonContainer}>
+                                    <button style={styles.mergeStyles(styles.actionButton, styles.primaryActionButton)} onClick={() => setShowAddCardModal(true)} disabled={isDataLoading}>
+                                        + Add Flashcard
+                                    </button>
+                                </div>
+
+                                {/* --- Score History --- */}
+                                <h2 style={styles.sectionTitle}>Score History</h2>
+                                {scoreHistory.length === 0 && <p style={{fontSize: '14px', color: theme.secondaryText}}>No practice sessions recorded yet.</p>}
+                                <ul style={styles.scoreHistoryList}>
+                                    {scoreHistory.map(score => (
+                                        <li key={score.id.toString()} style={styles.scoreListItem}>
+                                            <span style={styles.scoreDate}>{new Date(score.timestamp).toLocaleString()}</span>
+                                            <span style={styles.scoreResult}>Score: {score.correctCount} / {score.correctCount + score.incorrectCount}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </>
+                        )}
+                    </div>
+                    )}
+                </div> {/* End Main Content */}
+            </div> {/* End Content Area */}
+        </div> // End Dashboard Layout
       )}
 
 
-      {/* --- Modals --- */}
-      {/* Add Topic Modal */}
-      <Modal show={showAddTopicModal} onClose={() => setShowAddTopicModal(false)} title="Add New Topic">
-        <form onSubmit={handleAddTopic}>
-          <div style={styles.formGroup}>
-            <label htmlFor="topicName" style={styles.label}>Topic Name:</label>
-            <input
-              type="text"
-              id="topicName"
-              style={styles.input}
-              value={newTopicName}
-              onChange={(e) => setNewTopicName(e.target.value)}
-              required
-              disabled={isDataLoading}
-            />
-          </div>
-          <button type="submit" style={{...styles.button, ...styles.primaryButton}} disabled={isDataLoading || !newTopicName.trim()}>Save Topic</button>
-        </form>
-      </Modal>
+      {/* --- Modals (Keep existing structure & styling) --- */}
+        <Modal show={showAddTopicModal} onClose={() => setShowAddTopicModal(false)} title="Add New Topic">
+            <form onSubmit={handleAddTopic}>
+                <div style={styles.formGroup}>
+                    <label htmlFor="topicName" style={styles.label}>Topic Name:</label>
+                    <input type="text" id="topicName" style={styles.input} value={newTopicName} onChange={(e) => setNewTopicName(e.target.value)} required disabled={isDataLoading} placeholder="e.g., Japanese Vocabulary"/>
+                </div>
+                <div style={styles.modalActions}>
+                    <button type="submit" style={styles.formButton} disabled={isDataLoading || !newTopicName.trim()}>Save Topic</button>
+                    <button type="button" style={styles.modalCloseButton} onClick={() => setShowAddTopicModal(false)}>Cancel</button>
+                </div>
+            </form>
+        </Modal>
 
-      {/* Add Card Modal */}
-      <Modal show={showAddCardModal} onClose={() => setShowAddCardModal(false)} title={`Add Card to "${selectedTopic?.name}"`}>
-         <form onSubmit={handleAddCard}>
-             <div style={styles.formGroup}>
-                <label htmlFor="cardFront" style={styles.label}>Front:</label>
-                <textarea id="cardFront" style={styles.textarea} value={newCardFront} onChange={(e) => setNewCardFront(e.target.value)} required disabled={isDataLoading}></textarea>
-            </div>
-             <div style={styles.formGroup}>
-                <label htmlFor="cardBack" style={styles.label}>Back:</label>
-                <textarea id="cardBack" style={styles.textarea} value={newCardBack} onChange={(e) => setNewCardBack(e.target.value)} required disabled={isDataLoading}></textarea>
-            </div>
-            <button type="submit" style={{...styles.button, ...styles.primaryButton}} disabled={isDataLoading || !newCardFront.trim() || !newCardBack.trim()}>Save Card</button>
-         </form>
-      </Modal>
+        <Modal show={showAddCardModal} onClose={() => setShowAddCardModal(false)} title={`Add Card to "${selectedTopic?.name}"`}>
+            <form onSubmit={handleAddCard}>
+                <div style={styles.formGroup}>
+                    <label htmlFor="cardFront" style={styles.label}>Front:</label>
+                    <textarea id="cardFront" style={styles.textarea} value={newCardFront} onChange={(e) => setNewCardFront(e.target.value)} required disabled={isDataLoading} placeholder="e.g., こんにちは"></textarea>
+                </div>
+                <div style={styles.formGroup}>
+                    <label htmlFor="cardBack" style={styles.label}>Back:</label>
+                    <textarea id="cardBack" style={styles.textarea} value={newCardBack} onChange={(e) => setNewCardBack(e.target.value)} required disabled={isDataLoading} placeholder="e.g., Hello"></textarea>
+                </div>
+                <div style={styles.modalActions}>
+                    <button type="submit" style={styles.formButton} disabled={isDataLoading || !newCardFront.trim() || !newCardBack.trim()}>Save Card</button>
+                    <button type="button" style={styles.modalCloseButton} onClick={() => setShowAddCardModal(false)}>Cancel</button>
+                </div>
+            </form>
+        </Modal>
 
-      {/* Edit Card Modal */}
-      <Modal show={showEditCardModal} onClose={() => { setShowEditCardModal(false); setEditingCard(null); }} title={`Edit Card (ID: ${editingCard?.id})`}>
-         <form onSubmit={handleUpdateCard}>
-             <div style={styles.formGroup}>
-                <label htmlFor="editCardFront" style={styles.label}>Front:</label>
-                <textarea id="editCardFront" style={styles.textarea} value={editCardFront} onChange={(e) => setEditCardFront(e.target.value)} required disabled={isDataLoading}></textarea>
-            </div>
-             <div style={styles.formGroup}>
-                <label htmlFor="editCardBack" style={styles.label}>Back:</label>
-                <textarea id="editCardBack" style={styles.textarea} value={editCardBack} onChange={(e) => setEditCardBack(e.target.value)} required disabled={isDataLoading}></textarea>
-            </div>
-            <button type="submit" style={{...styles.button, ...styles.primaryButton}} disabled={isDataLoading || !editCardFront.trim() || !editCardBack.trim()}>Update Card</button>
-         </form>
-      </Modal>
+        <Modal show={showEditCardModal} onClose={() => { setShowEditCardModal(false); setEditingCard(null); }} title={`Edit Card`}>
+            <form onSubmit={handleUpdateCard}>
+                <div style={styles.formGroup}>
+                    <label htmlFor="editCardFront" style={styles.label}>Front:</label>
+                    <textarea id="editCardFront" style={styles.textarea} value={editCardFront} onChange={(e) => setEditCardFront(e.target.value)} required disabled={isDataLoading}></textarea>
+                </div>
+                <div style={styles.formGroup}>
+                    <label htmlFor="editCardBack" style={styles.label}>Back:</label>
+                    <textarea id="editCardBack" style={styles.textarea} value={editCardBack} onChange={(e) => setEditCardBack(e.target.value)} required disabled={isDataLoading}></textarea>
+                </div>
+                <div style={styles.modalActions}>
+                    <button type="submit" style={styles.formButton} disabled={isDataLoading || !editCardFront.trim() || !editCardBack.trim()}>Update Card</button>
+                    <button type="button" style={styles.modalCloseButton} onClick={() => { setShowEditCardModal(false); setEditingCard(null); }}>Cancel</button>
+                </div>
+            </form>
+        </Modal>
 
-      {/* Set Reminder Modal */}
-       <Modal show={showReminderModal} onClose={() => setShowReminderModal(false)} title={`Set Reminder for "${selectedTopic?.name}"`}>
-         <form onSubmit={handleSetReminder}>
-             <div style={styles.formGroup}>
-                <label htmlFor="reminderDate" style={styles.label}>Next Review Date:</label>
-                 <input
-                    type="date"
-                    id="reminderDate"
-                    style={styles.input}
-                    value={reminderDate}
-                    onChange={(e) => setReminderDate(e.target.value)}
-                    required
-                    disabled={isDataLoading}
-                    min={new Date().toISOString().split('T')[0]} // Prevent past dates
-                 />
-             </div>
-             <button type="submit" style={{...styles.button, ...styles.primaryButton}} disabled={isDataLoading || !reminderDate}>Set Reminder</button>
-         </form>
-       </Modal>
+        <Modal show={showReminderModal} onClose={() => setShowReminderModal(false)} title={`Set Reminder for "${selectedTopic?.name}"`}>
+            <form onSubmit={handleSetReminder}>
+                <div style={styles.formGroup}>
+                    <label htmlFor="reminderDate" style={styles.label}>Next Review Date:</label>
+                    <input type="date" id="reminderDate" style={styles.input} value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} required disabled={isDataLoading} min={new Date().toISOString().split('T')[0]} />
+                </div>
+                <div style={styles.modalActions}>
+                    <button type="submit" style={styles.formButton} disabled={isDataLoading || !reminderDate}>Set Reminder</button>
+                    <button type="button" style={styles.modalCloseButton} onClick={() => setShowReminderModal(false)}>Cancel</button>
+                </div>
+            </form>
+        </Modal>
 
     </div>
   );
