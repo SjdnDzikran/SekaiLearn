@@ -1,37 +1,77 @@
-# ICP Flashcard App (Anki-Style)
+# ICP Flashcard App (Sekai Learn)
 
-This project is a decentralized flashcard application built on the Internet Computer (ICP), inspired by Anki. It allows users to create topics, manage flashcards within those topics, practice using spaced repetition principles (simplified), track their scores, and set review reminders.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) <!-- Optional: Add a license badge -->
 
-The application leverages Internet Identity for secure, user-specific data storage. Each user's topics, cards, and scores are stored on the blockchain, accessible only to them via their identity.
+**Sekai Learn** is a decentralized flashcard application built on the Internet Computer (ICP), inspired by spaced repetition systems like Anki. It empowers users to create topics, manage flashcards, practice efficiently, track progress, and set review reminders, all while maintaining full ownership and control over their data.
+
+The application leverages Internet Identity for secure authentication. Each user's topics, flashcards, and score history are stored directly on the ICP blockchain within the application's canister, associated exclusively with their unique Principal ID. This ensures data privacy and sovereignty.
+
+
+![App Screenshot](./frontend/screenshot.webp)
+
 
 ## Core Features
 
-1.  **User Authentication:** Secure login/signup via Internet Identity. All user data is tied to their unique Principal ID.
-2.  **Topic Management:** Create, view, and delete topics to group related flashcards.
-3.  **Flashcard Management:** Add, view, edit, and delete flashcards (with front and back content) within specific topics.
-4.  **Practice Mode:** Review flashcards for a selected topic. Mark cards as correct or incorrect.
-5.  **Score History:** Track performance for each practice session (correct/incorrect count) per topic.
-6.  **Review Reminders:** Set a future date/time for the next review session for a topic. Topics due for review are visually highlighted.
+*   **Secure Authentication:** Login via Internet Identity. Data is encrypted and tied to the user's Principal.
+*   **Topic Organization:** Create, view, and delete distinct topics (e.g., "Japanese Vocabulary," "ICP Concepts") to categorize flashcards.
+*   **Flashcard Management:** Easily add, view, edit, and delete flashcards with distinct 'Front' and 'Back' content within selected topics.
+*   **Practice Mode:** Engage in review sessions for chosen topics. Cards are presented, and users mark them as 'Correct' or 'Incorrect'.
+*   **Score History:** Review past practice session results (correct/incorrect counts and timestamps) for each topic.
+*   **Spaced Repetition (Simplified):** Based on practice performance, the app calculates a suggested next review date for the topic.
+*   **Review Reminders:** Manually set a specific future date for the next review session. Topics due for review are visually highlighted with a '🔔' icon.
+
+## How It Works (Storage & Persistence)
+
+*   **User Data:** All user-generated content (topics, cards, scores) is stored within the backend canister's memory during runtime.
+*   **Data Structure:** Motoko's `RBTree` (Red-Black Tree) is used for efficient in-memory lookup, insertion, and deletion of data, keyed by IDs or user Principals.
+*   **Persistence:** To ensure data survives canister upgrades, the application utilizes ICP's **stable memory**.
+    *   **`preupgrade` Hook:** Before an upgrade, all data from the `RBTree` structures is serialized into simple arrays (e.g., `[(TopicId, TopicData)]`) and written to stable variables.
+    *   **`postupgrade` Hook:** After the upgrade completes, the code reads the serialized data back from the stable variables and repopulates the `RBTree` structures in the new canister instance's memory.
+    *   *(Rationale: This manual serialization approach using arrays/tuples in stable variables was implemented due to potential complexities or limitations encountered with directly using `StableBTreeMap` or similar stable structures within the specific development context or environment constraints at the time of building.)*
 
 ## Technology Stack
 
-*   **Backend:** Motoko (running in an ICP canister smart contract)
-    *   Uses `RBTree` for in-memory data storage (topics, flashcards, scores).
-    *   Implements manual `preupgrade` and `postupgrade` logic to serialize data to stable variables (arrays of tuples) for persistence across canister upgrades. *(Note: This approach was chosen due to limitations accessing Stable Maps in the development environment).*
-*   **Frontend:** React + Vite (without external UI libraries like Shadcn)
-    *   Manual UI component construction using standard HTML elements.
-    *   Basic inline styles and optional `index.css` for structure and appearance.
-*   **Authentication:** Internet Identity via `@dfinity/auth-client`.
-*   **ICP Interaction:** `@dfinity/agent` for frontend-backend communication.
-*   **Build/Deployment:** DFINITY SDK (`dfx`).
+*   **Backend:**
+    *   Language: **Motoko**
+    *   Runtime: Internet Computer Canister (Smart Contract)
+    *   Data Structures: `RBTree` (in-memory), `Array` / `Tuple` (for stable variable serialization)
+*   **Frontend:**
+    *   Framework: **React**
+    *   Build Tool: **Vite**
+    *   Styling: Inline Styles (JavaScript objects)
+    *   Core UI: Standard HTML elements (no external component libraries like Shadcn UI, Material UI, etc.)
+*   **ICP Integration:**
+    *   Authentication: **Internet Identity** via `@dfinity/auth-client`
+    *   Canister Communication: `@dfinity/agent`
+*   **Development & Deployment:**
+    *   **DFINITY SDK (`dfx`)**
 
+## Getting Started (Local Development)
 
-## Development Setup (Local or Playground)
-
-1.  **Prerequisites:** Ensure you have [Node.js](https://nodejs.org/) and the [DFINITY SDK (`dfx`)](https://internetcomputer.org/docs/current/developer-docs/getting-started/install/) installed.
-2.  **Clone/Download:** Get the project code.
-3.  **Start Local Replica (if developing locally):** In a separate terminal, run: `dfx start --background --clean` *(Skip if using a managed playground environment)*.
-4.  **Install Dependencies:** Navigate to the project root and run: `npm install` (This installs dependencies listed in the existing `package.json` files).
-5.  **Deploy:** `dfx deploy` *(Deploys to your local replica or the configured playground network)*.
-6.  **Run Frontend Dev Server:** `npm run dev`
-7.  Open the frontend URL provided by Vite (usually `http://localhost:5173` for local dev, check terminal output) in your browser.
+1.  **Prerequisites:**
+    *   [Node.js](https://nodejs.org/) (LTS version recommended)
+    *   [DFINITY SDK (`dfx`)](https://internetcomputer.org/docs/current/developer-docs/getting-started/install/)
+2.  **Clone Repository:**
+    ```bash
+    git clone <your-repo-url>
+    cd <your-repo-directory>
+    ```
+3.  **Start Local Replica:** In a separate terminal window, run:
+    ```bash
+    dfx start --background --clean
+    ```
+    *(Ensures a fresh local ICP environment)*
+4.  **Install Dependencies:** Install both root Node.js dependencies and frontend dependencies:
+    ```bash
+    npm install
+    ```
+5.  **Deploy Canisters:** Deploy the backend canister to your local replica:
+    ```bash
+    dfx deploy
+    ```
+    *(This command also generates necessary type declarations for the frontend)*
+6.  **Run Frontend Dev Server:**
+    ```bash
+    npm run dev
+    ```
+7.  **Access Application:** Open the URL provided by Vite in your browser (usually `http://localhost:5173` or similar – check the terminal output). You will interact with your locally deployed canister.
