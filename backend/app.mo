@@ -4,7 +4,6 @@ import Nat "mo:base/Nat";
 import Text "mo:base/Text";
 import RBTree "mo:base/RBTree"; // Use RBTree
 import Iter "mo:base/Iter";
-import Option "mo:base/Option";
 import Buffer "mo:base/Buffer";
 
 actor Backend {
