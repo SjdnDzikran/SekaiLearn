@@ -2,7 +2,7 @@
 
 This project is a decentralized flashcard application built on the Internet Computer (ICP), inspired by Anki. It allows users to create topics, manage flashcards within those topics, practice using spaced repetition principles (simplified), track their scores, and set review reminders.
 
-The application leverages Internet Identity for secure, user-specific data storage. Each user's topics, cards, and scores are stored encrypted on the blockchain, accessible only to them.
+The application leverages Internet Identity for secure, user-specific data storage. Each user's topics, cards, and scores are stored on the blockchain, accessible only to them via their identity.
 
 ## Core Features
 
@@ -16,22 +16,22 @@ The application leverages Internet Identity for secure, user-specific data stora
 ## Technology Stack
 
 *   **Backend:** Motoko (running in an ICP canister smart contract)
-    *   Uses `ExperimentalStableTrieMap` for persistent storage across upgrades.
+    *   Uses `RBTree` for in-memory data storage (topics, flashcards, scores).
+    *   Implements manual `preupgrade` and `postupgrade` logic to serialize data to stable variables (arrays of tuples) for persistence across canister upgrades. *(Note: This approach was chosen due to limitations accessing Stable Maps in the development environment).*
 *   **Frontend:** React + Vite (without external UI libraries like Shadcn)
     *   Manual UI component construction using standard HTML elements.
-    *   Custom CSS styling to achieve a clean, functional look (inspired by Material 3).
+    *   Basic inline styles and optional `index.css` for structure and appearance.
 *   **Authentication:** Internet Identity via `@dfinity/auth-client`.
 *   **ICP Interaction:** `@dfinity/agent` for frontend-backend communication.
 *   **Build/Deployment:** DFINITY SDK (`dfx`).
 
-## Development Setup (Local)
+
+## Development Setup (Local or Playground)
 
 1.  **Prerequisites:** Ensure you have [Node.js](https://nodejs.org/) and the [DFINITY SDK (`dfx`)](https://internetcomputer.org/docs/current/developer-docs/getting-started/install/) installed.
 2.  **Clone/Download:** Get the project code.
-3.  **Start Local Replica:** In a separate terminal, run: `dfx start --background --clean`
+3.  **Start Local Replica (if developing locally):** In a separate terminal, run: `dfx start --background --clean` *(Skip if using a managed playground environment)*.
 4.  **Install Dependencies:** Navigate to the project root and run: `npm install` (This installs dependencies listed in the existing `package.json` files).
-5.  **Deploy Locally:** `dfx deploy`
+5.  **Deploy:** `dfx deploy` *(Deploys to your local replica or the configured playground network)*.
 6.  **Run Frontend Dev Server:** `npm run dev`
-7.  Open the frontend URL provided by Vite (usually `http://localhost:5173`) in your browser.
-
-*(Note: No additional dependencies should be installed via npm/npx during development as per project constraints.)*
+7.  Open the frontend URL provided by Vite (usually `http://localhost:5173` for local dev, check terminal output) in your browser.

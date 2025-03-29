@@ -45,7 +45,7 @@ const styles = {
   // General Layout & App Container
   appWrapper: { margin: 0, padding: 0, boxSizing: 'border-box', fontFamily: 'Arial, sans-serif', backgroundColor: theme.secondaryBackground /* Default bg */ },
   loading: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.5rem', color: theme.primaryText, backgroundColor: theme.primaryBackground },
-  globalLoadingIndicator: { position: 'fixed', top: '10px', right: '10px', backgroundColor: theme.accentColor, color: 'white', padding: '5px 10px', borderRadius: '4px', zIndex: 1050, fontSize: '12px' },
+  globalLoadingIndicator: { position: 'fixed', top: '10px', left: '50%', transform: 'translateX(-50%)', backgroundColor: theme.accentColor, color: 'white', padding: '5px 10px', borderRadius: '4px', zIndex: 1050, fontSize: '12px' },
 
   // Landing Page Styles (Updated Colors)
   landingPageContainer: { display: 'flex', minHeight: '100vh' },
@@ -100,17 +100,33 @@ const styles = {
   },
 
   // --- Dashboard Layout (Updated) ---
-  dashboardLayout: { display: 'flex', flexDirection: 'column', minHeight: '100vh' },
-  dashboardHeader: { // NEW Header Bar
+  dashboardLayout: {
+    // This container might not need much styling itself now
+    minHeight: '100vh', // Still good for overall page structure
+    paddingTop: '60px', // <-- ADD THIS: Global padding to account for fixed header
+    paddingLeft: '260px', // <-- ADD THIS: Global padding to account for fixed sidebar
+    boxSizing: 'border-box' // Ensure padding is included in width/height calculations
+  },
+  dashboardHeader: {
     height: '60px',
-    backgroundColor: theme.primaryBackground, // Use theme color
+    backgroundColor: theme.primaryBackground,
+    position: 'fixed',
+    width: '100%',
+    zIndex: 1010,
+    boxSizing: 'border-box',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between', // Push items to ends
-    padding: '0 2rem', // Add padding
+    justifyContent: 'space-between',
+    padding: '0 2rem',
     borderBottom: `1px solid ${theme.borderColor}`,
-    color: theme.textOnPrimary, // Use text color suitable for primary bg
-    flexShrink: 0, // Prevent header from shrinking
+    color: theme.textOnPrimary,
+    // --- NEW Fixed Positioning ---
+    position: 'fixed',      // Fix to viewport
+    top: 0,                 // Align to top
+    left: 0,                // Align to left
+    width: '100%',          // Full width
+    zIndex: 1010,           // Ensure it's above other fixed/scrolling content
+    boxSizing: 'border-box' // Include padding/border in width calculation
   },
   headerLogoContainer: {
     display: 'flex',
@@ -135,20 +151,41 @@ const styles = {
     flexGrow: 1, // Take remaining vertical space
     overflow: 'hidden', // Prevent double scrollbars if needed
   },
-  dashboardSidebar: { // Updated background & text
+  dashboardSidebar: {
     width: '260px',
-    backgroundColor: theme.primaryBackground, // Use theme color
+    backgroundColor: theme.primaryBackground,
     padding: '1.5rem 1rem',
     display: 'flex',
     flexDirection: 'column',
     borderRight: `1px solid ${theme.borderColor}`,
-    color: theme.textOnPrimary, // Ensure text contrast
-    flexShrink: 0, // Prevent sidebar from shrinking
-    overflowY: 'auto', // Allow sidebar scrolling independently
+    color: theme.textOnPrimary,
+    position: 'fixed',          // Keep fixed
+    top: '60px',                // Keep below header
+    left: 0,                    // Keep aligned left
+    height: 'calc(100vh - 60px)', // Keep calculated height
+    zIndex: 1000,               // Below header, above default content
+    boxSizing: 'border-box',    // Include padding/border in width calculation
+    display: 'flex',
+    flexDirection: 'column',
   },
   // sidebarLogo: { /* Removed, logo is in header now */},
-  sidebarTitle: { fontSize: '1.1rem', fontWeight: 'bold', color: theme.textOnPrimary, marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${theme.borderColor}` },
-  sidebarList: { listStyle: 'none', padding: 0, margin: 0, flexGrow: 1 }, // Removed overflowY, handled by sidebar container
+  sidebarTitle: {
+    fontSize: '1.1rem',
+    fontWeight: 'bold',
+    color: theme.textOnPrimary,
+    marginBottom: '1rem',
+    paddingBottom: '0.5rem',
+    borderBottom: `1px solid ${theme.borderColor}`,
+    flexShrink: 0 // Ensure title doesn't shrink
+  },
+  sidebarList: {
+    listStyle: 'none',
+    padding: 0,
+    margin: 0,
+    flexGrow: 1, // Allow the list to take up available space
+    overflowY: 'auto', // <-- ADD THIS: Make ONLY the list scrollable
+    marginBottom: '1rem', // Optional: add space between list and button
+  },
   topicListItem: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -177,29 +214,32 @@ const styles = {
     '&:hover': { opacity: 1, backgroundColor: theme.dangerHover },
     marginLeft: '5px',
   },
-  sidebarButton: { // For "+ Add Topic", updated contrast potentially needed
+  sidebarButton: {
     padding: '10px 15px',
     fontSize: '14px',
     cursor: 'pointer',
     borderRadius: '4px',
     border: '1px solid transparent',
     textAlign: 'center',
-    backgroundColor: theme.accentColor, // Accent color should be fine on primary bg
+    backgroundColor: theme.accentColor,
     color: 'white',
     width: '100%',
     transition: 'background-color 0.2s ease',
-    marginTop: '1rem', // Ensure some space before bottom
+    flexShrink: 0, // Ensure button doesn't shrink
     '&:hover': { backgroundColor: theme.accentHover },
     '&:disabled': { backgroundColor: '#ccc', cursor: 'not-allowed' }
   },
 
+
   // Dashboard Main Area Styles (Updated background)
   dashboardMain: {
-    flexGrow: 1,
     padding: '2rem',
-    overflowY: 'auto', // Allow main content scrolling
-    backgroundColor: theme.secondaryBackground, // Use off-white
-    color: theme.primaryText, // Default text color for main area
+    overflowY: 'auto', // Allow main content scrolling (This remains correct)
+    backgroundColor: theme.secondaryBackground,
+    color: theme.primaryText,
+    width: '100%', 
+    height: '100%', // Make it fill the padded dashboardLayout area
+    boxSizing: 'border-box', // Include padding in height/width calculation
   },
   mainContentHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: `1px solid ${theme.borderColor}` },
   mainContentTitle: { fontSize: '1.6rem', color: theme.primaryText, margin: 0 },
